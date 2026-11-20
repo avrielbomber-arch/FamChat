@@ -128,7 +128,7 @@ private fun AuthScreen(auth: FirebaseAuth) {
     }
 }
 
-private data class PersonRow(val uid: String, val username: String, val publicId: String)
+internal data class PersonRow(val uid: String, val username: String, val publicId: String)
 private data class RequestRow(val id: String, val fromUid: String, val username: String, val publicId: String)
 
 @Composable
