@@ -33,6 +33,8 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import java.util.Locale
+import java.util.Date
+import java.text.SimpleDateFormat
 import kotlin.random.Random
 
 private val Navy = Color(0xFF0B1220)
@@ -141,6 +143,7 @@ private fun AuthScreen(auth: FirebaseAuth) {
 
 internal data class PersonRow(val uid: String, val username: String, val publicId: String)
 private data class RequestRow(val id: String, val fromUid: String, val username: String, val publicId: String)
+private data class ConversationRow(val friend: PersonRow, val lastMessage: String, val lastMessageAt: Date?)
 
 @Composable
 private fun HomeScreen(auth: FirebaseAuth, uid: String, isDark: Boolean, onThemeChange: (Boolean) -> Unit) {
@@ -148,6 +151,9 @@ private fun HomeScreen(auth: FirebaseAuth, uid: String, isDark: Boolean, onTheme
     var username by remember(uid) { mutableStateOf("Memuat profil...") }
     var publicId by remember(uid) { mutableStateOf("...") }
     var tab by remember { mutableStateOf(0) }
+    var conversations by remember(uid) { mutableStateOf<List<ConversationRow>>(emptyList()) }
+    var conversationsLoading by remember(uid) { mutableStateOf(true) }
+    var conversationsError by remember(uid) { mutableStateOf("") }
     var searchId by remember { mutableStateOf("") }
     var result by remember { mutableStateOf<PersonRow?>(null) }
     var friends by remember { mutableStateOf<List<PersonRow>>(emptyList()) }
@@ -180,6 +186,52 @@ private fun HomeScreen(auth: FirebaseAuth, uid: String, isDark: Boolean, onTheme
                 }
             }
         }
+    }
+
+    DisposableEffect(uid) {
+        val registration = db.collection("chats").whereArrayContains("members", uid)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    conversationsError = error.localizedMessage ?: "Gagal memuat daftar chat."
+                    conversationsLoading = false
+                } else if (snapshot != null) {
+                    conversationsError = ""
+                    val chatRows = snapshot.documents.mapNotNull { doc ->
+                        val members = (doc.get("members") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                        val otherUid = members.firstOrNull { it != uid }
+                        val lastMessage = doc.getString("lastMessage").orEmpty()
+                        if (otherUid.isNullOrBlank() || lastMessage.isBlank()) null
+                        else Triple(otherUid, lastMessage, doc.getTimestamp("lastMessageAt")?.toDate())
+                    }
+                    if (chatRows.isEmpty()) {
+                        conversations = emptyList()
+                        conversationsLoading = false
+                    } else {
+                        val loaded = mutableListOf<ConversationRow>()
+                        var remaining = chatRows.size
+                        chatRows.forEach { row ->
+                            db.collection("publicProfiles").document(row.first).get()
+                                .addOnSuccessListener { profile ->
+                                    loaded.add(
+                                        ConversationRow(
+                                            PersonRow(row.first, profile.getString("username") ?: "Pengguna", profile.getString("publicId") ?: ""),
+                                            row.second,
+                                            row.third
+                                        )
+                                    )
+                                }
+                                .addOnCompleteListener {
+                                    remaining--
+                                    if (remaining == 0) {
+                                        conversations = loaded.sortedByDescending { it.lastMessageAt?.time ?: 0L }
+                                        conversationsLoading = false
+                                    }
+                                }
+                        }
+                    }
+                }
+            }
+        onDispose { registration.remove() }
     }
 
     LaunchedEffect(uid) {
@@ -227,11 +279,51 @@ private fun HomeScreen(auth: FirebaseAuth, uid: String, isDark: Boolean, onTheme
                 }
             }
             TabRow(selectedTabIndex = tab, containerColor = panel, contentColor = accent) {
-                listOf("Cari", "Permintaan", "Teman").forEachIndexed { index, label -> Tab(selected = tab == index, onClick = { tab = index; message = ""; refreshLists() }, text = { Text(label) }) }
+                listOf("Chat", "Cari", "Permintaan", "Teman").forEachIndexed { index, label -> Tab(selected = tab == index, onClick = { tab = index; message = ""; refreshLists() }, text = { Text(label) }) }
             }
             Spacer(Modifier.height(16.dp))
             when (tab) {
                 0 -> {
+                    Text("Percakapan terbaru", fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
+                    when {
+                        conversationsLoading -> Box(Modifier.fillMaxWidth().padding(28.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = accent)
+                        }
+                        conversationsError.isNotBlank() -> Text(conversationsError, color = Color(0xFFE57373), modifier = Modifier.padding(top = 12.dp))
+                        conversations.isEmpty() -> Text(
+                            "Belum ada percakapan. Tambahkan teman, lalu buka chat untuk mulai mengobrol.",
+                            color = muted,
+                            modifier = Modifier.padding(top = 12.dp)
+                        )
+                        else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(conversations, key = { it.friend.uid }) { conversation ->
+                                Card(
+                                    Modifier.fillMaxWidth().clickable { selectedChat = conversation.friend },
+                                    colors = CardDefaults.cardColors(containerColor = panel),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Surface(Modifier.size(46.dp), shape = CircleShape, color = accent) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text(conversation.friend.username.take(1).uppercase(), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                            }
+                                        }
+                                        Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                                            Text(conversation.friend.username, color = fg, fontWeight = FontWeight.Bold)
+                                            Text(conversation.lastMessage, color = muted, maxLines = 1, fontSize = 13.sp)
+                                        }
+                                        Text(
+                                            conversation.lastMessageAt?.let { SimpleDateFormat("HH:mm", Locale("id", "ID")).format(it) } ?: "",
+                                            color = muted,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                1 -> {
                     Text("Cari teman dengan Public ID", fontWeight = FontWeight.SemiBold)
                     OutlinedTextField(searchId, { searchId = it.filter(Char::isDigit).take(8); result = null }, Modifier.fillMaxWidth().padding(top = 10.dp), label = { Text("Masukkan 8 digit Public ID") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, colors = fieldColors(isDark))
                     Button(onClick = {
@@ -271,12 +363,12 @@ private fun HomeScreen(auth: FirebaseAuth, uid: String, isDark: Boolean, onTheme
                         }
                     }
                 }
-                1 -> {
+                2 -> {
                     Text("Permintaan pertemanan masuk", fontWeight = FontWeight.SemiBold)
                     if (requests.isEmpty()) Text("Belum ada permintaan pertemanan.", color = Muted, modifier = Modifier.padding(top = 12.dp))
                     LazyColumn {
                         items(requests, key = { it.id }) { request ->
-                            Card(Modifier.fillMaxWidth().padding(vertical = 6.dp), colors = CardDefaults.cardColors(containerColor = Panel)) {
+                            Card(Modifier.fillMaxWidth().padding(vertical = 6.dp), colors = CardDefaults.cardColors(containerColor = panel)) {
                                 Column(Modifier.padding(14.dp)) {
                                     Text(request.username, fontWeight = FontWeight.Bold)
                                     Text("ID: ${request.publicId}", color = Muted, fontSize = 13.sp)
@@ -310,7 +402,7 @@ private fun HomeScreen(auth: FirebaseAuth, uid: String, isDark: Boolean, onTheme
                     if (friends.isEmpty()) Text("Kamu belum memiliki teman.", color = Muted, modifier = Modifier.padding(top = 12.dp))
                     LazyColumn {
                         items(friends, key = { it.uid }) { person ->
-                            Card(Modifier.fillMaxWidth().padding(vertical = 5.dp), colors = CardDefaults.cardColors(containerColor = Panel)) {
+                            Card(Modifier.fillMaxWidth().padding(vertical = 5.dp), colors = CardDefaults.cardColors(containerColor = panel)) {
                                 Column(Modifier.padding(14.dp)) {
                                     Text(person.username, fontWeight = FontWeight.Bold)
                                     Text("ID: ${person.publicId}", color = Muted, fontSize = 13.sp)

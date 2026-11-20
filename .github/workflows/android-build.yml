@@ -10,6 +10,7 @@ on:
       - feature/private-chat
       - fix/chat-create-before-listener
       - feature/modern-bbm-home
+      - feature/conversation-list
   workflow_dispatch:
 
 permissions:
