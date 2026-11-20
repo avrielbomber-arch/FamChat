@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -115,11 +116,31 @@ internal fun ChatScreen(uid: String, friend: PersonRow, onBack: () -> Unit, isDa
 
     Surface(Modifier.fillMaxSize(), color = bg, contentColor = fg) {
         Column(Modifier.fillMaxSize().padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                TextButton(onClick = onBack) { Text("Kembali", color = Color(0xFF3987FF)) }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+            ) {
+                TextButton(
+                    onClick = onBack,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text("‹", color = Color(0xFF3987FF), fontSize = 38.sp, lineHeight = 38.sp)
+                }
+                Box(
+                    modifier = Modifier.size(42.dp).background(Color(0xFF245EB8), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        friend.username.take(1).uppercase(Locale.getDefault()),
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(friend.username, fontWeight = FontWeight.Bold, fontSize = 19.sp)
-                    Text("Percakapan pribadi", color = mutedText, fontSize = 12.sp)
+                    Text(friend.username, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                    Text("tersambung di FamChat", color = mutedText, fontSize = 12.sp)
                 }
             }
             HorizontalDivider(color = if (isDark) Color(0xFF26364F) else Color(0xFFDCE4F0))
