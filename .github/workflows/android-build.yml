@@ -6,6 +6,7 @@ on:
       - main
       - setup/android-mvp
       - setup/firebase-config
+      - feature/friend-system
   workflow_dispatch:
 
 permissions:
