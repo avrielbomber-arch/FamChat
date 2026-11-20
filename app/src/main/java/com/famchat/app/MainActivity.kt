@@ -78,10 +78,10 @@ private fun AuthScreen(auth: FirebaseAuth) {
     Surface(Modifier.fillMaxSize(), color = Navy, contentColor = Color.White) {
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
             Text("FamChat", fontSize = 30.sp, fontWeight = FontWeight.Bold)
-            Text("Tetap dekat, di mana pun.", color = muted)
+            Text("Tetap dekat, di mana pun.", color = Muted)
             Text(if (isRegister) "Buat akun baru" else "Selamat datang kembali", Modifier.padding(top = 28.dp, bottom = 16.dp), fontSize = 20.sp)
             if (isRegister) {
-                OutlinedTextField(username, { username = it }, Modifier.fillMaxWidth(), label = { Text("Username") }, leadingIcon = { Icon(Icons.Default.Person, null) }, singleLine = true, colors = fieldColors(isDark))
+                OutlinedTextField(username, { username = it }, Modifier.fillMaxWidth(), label = { Text("Username") }, leadingIcon = { Icon(Icons.Default.Person, null) }, singleLine = true, colors = fieldColors())
                 Spacer(Modifier.height(10.dp))
             }
             OutlinedTextField(email, { email = it.trim() }, Modifier.fillMaxWidth(), label = { Text("Email") }, leadingIcon = { Icon(Icons.Default.Mail, null) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), singleLine = true, colors = fieldColors())
