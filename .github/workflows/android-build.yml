@@ -3,6 +3,7 @@ name: Build FamChat APK
 on:
   push:
     branches:
+      - main
       - setup/android-mvp
   workflow_dispatch:
 
