@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - setup/android-mvp
+      - setup/firebase-config
   workflow_dispatch:
 
 permissions:
