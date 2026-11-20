@@ -46,17 +46,8 @@ internal fun ChatScreen(uid: String, friend: PersonRow, onBack: () -> Unit) {
 
     DisposableEffect(chatId) {
         var registration: ListenerRegistration? = null
-        chatRef.get().addOnSuccessListener { doc ->
-            if (!doc.exists()) {
-                chatRef.set(
-                    mapOf(
-                        "members" to members,
-                        "createdAt" to FieldValue.serverTimestamp(),
-                        "lastMessage" to "",
-                        "lastMessageAt" to FieldValue.serverTimestamp()
-                    )
-                ).addOnFailureListener { e -> status = e.localizedMessage ?: "Gagal membuka chat." }
-            }
+
+        fun listenForMessages() {
             registration = chatRef.collection("messages")
                 .orderBy("createdAt", Query.Direction.ASCENDING)
                 .addSnapshotListener { snapshot, error ->
@@ -85,7 +76,30 @@ internal fun ChatScreen(uid: String, friend: PersonRow, onBack: () -> Unit) {
                         }
                     }
                 }
-        }.addOnFailureListener { e -> status = e.localizedMessage ?: "Tidak dapat membuka percakapan." }
+        }
+
+        chatRef.get().addOnSuccessListener { doc ->
+            if (doc.exists()) {
+                listenForMessages()
+            } else {
+                chatRef.set(
+                    mapOf(
+                        "members" to members,
+                        "createdAt" to FieldValue.serverTimestamp(),
+                        "lastMessage" to "",
+                        "lastMessageAt" to FieldValue.serverTimestamp()
+                    )
+                ).addOnSuccessListener {
+                    // Start listening only after the parent chat document exists.
+                    listenForMessages()
+                }.addOnFailureListener { e ->
+                    status = e.localizedMessage ?: "Gagal membuat percakapan."
+                }
+            }
+        }.addOnFailureListener { e ->
+            status = e.localizedMessage ?: "Tidak dapat membuka percakapan."
+        }
+
         onDispose { registration?.remove() }
     }
 

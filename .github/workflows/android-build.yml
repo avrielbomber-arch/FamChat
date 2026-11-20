@@ -8,6 +8,7 @@ on:
       - setup/firebase-config
       - feature/friend-system
       - feature/private-chat
+      - fix/chat-create-before-listener
   workflow_dispatch:
 
 permissions:
