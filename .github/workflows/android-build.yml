@@ -12,6 +12,7 @@ on:
       - feature/modern-bbm-home
       - feature/conversation-list
       - feature/famchat-launcher-icon
+      - feature/bbm-style-chat-back
   workflow_dispatch:
 
 permissions:
