@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -127,7 +128,7 @@ private fun AuthScreen(auth: FirebaseAuth) {
     }
 }
 
-private data class PersonRow(val uid: String, val username: String, val publicId: String)
+internal data class PersonRow(val uid: String, val username: String, val publicId: String)
 private data class RequestRow(val id: String, val fromUid: String, val username: String, val publicId: String)
 
 @Composable
@@ -142,6 +143,7 @@ private fun HomeScreen(auth: FirebaseAuth, uid: String) {
     var requests by remember { mutableStateOf<List<RequestRow>>(emptyList()) }
     var message by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
+    var selectedChat by remember { mutableStateOf<PersonRow?>(null) }
 
     fun refreshLists() {
         db.collection("friendRequests").whereEqualTo("toUid", uid).whereEqualTo("status", "pending").get()
@@ -180,7 +182,10 @@ private fun HomeScreen(auth: FirebaseAuth, uid: String) {
         refreshLists()
     }
 
-    Surface(Modifier.fillMaxSize(), color = Navy, contentColor = Color.White) {
+    if (selectedChat != null) {
+        val person = selectedChat!!
+        ChatScreen(uid = uid, friend = person, onBack = { selectedChat = null })
+    } else Surface(Modifier.fillMaxSize(), color = Navy, contentColor = Color.White) {
         Column(Modifier.fillMaxSize().padding(20.dp)) {
             Text("FamChat", fontSize = 28.sp, fontWeight = FontWeight.Bold)
             Text("Halo, $username", color = Color(0xFF8DB8FF), modifier = Modifier.padding(top = 4.dp))
@@ -274,6 +279,9 @@ private fun HomeScreen(auth: FirebaseAuth, uid: String) {
                                 Column(Modifier.padding(14.dp)) {
                                     Text(person.username, fontWeight = FontWeight.Bold)
                                     Text("ID: ${person.publicId}", color = Muted, fontSize = 13.sp)
+                                    Button(onClick = { selectedChat = person }, modifier = Modifier.padding(top = 8.dp), colors = ButtonDefaults.buttonColors(containerColor = Blue)) {
+                                        Text("Buka chat")
+                                    }
                                 }
                             }
                         }
