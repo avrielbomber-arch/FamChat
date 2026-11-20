@@ -33,7 +33,11 @@ private data class ChatMessage(
 )
 
 @Composable
-internal fun ChatScreen(uid: String, friend: PersonRow, onBack: () -> Unit) {
+internal fun ChatScreen(uid: String, friend: PersonRow, onBack: () -> Unit, isDark: Boolean = true) {
+    val bg = if (isDark) Color(0xFF0B1220) else Color(0xFFF3F6FC)
+    val fg = if (isDark) Color.White else Color(0xFF17243A)
+    val incomingBubble = if (isDark) Color(0xFF17263C) else Color.White
+    val mutedText = if (isDark) Color(0xFFCAD7EA) else Color(0xFF68758A)
     val db = remember { FirebaseFirestore.getInstance() }
     val members = remember(uid, friend.uid) { listOf(uid, friend.uid).sorted() }
     val chatId = remember(members) { members.joinToString("_") }
@@ -107,16 +111,16 @@ internal fun ChatScreen(uid: String, friend: PersonRow, onBack: () -> Unit) {
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
     }
 
-    Surface(Modifier.fillMaxSize(), color = Color(0xFF0B1220), contentColor = Color.White) {
+    Surface(Modifier.fillMaxSize(), color = bg, contentColor = fg) {
         Column(Modifier.fillMaxSize().padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                TextButton(onClick = onBack) { Text("Kembali", color = Color(0xFF8DB8FF)) }
+                TextButton(onClick = onBack) { Text("Kembali", color = Color(0xFF3987FF)) }
                 Column(Modifier.weight(1f)) {
                     Text(friend.username, fontWeight = FontWeight.Bold, fontSize = 19.sp)
-                    Text("Percakapan pribadi", color = Color(0xFF91A0B7), fontSize = 12.sp)
+                    Text("Percakapan pribadi", color = mutedText, fontSize = 12.sp)
                 }
             }
-            HorizontalDivider(color = Color(0xFF26364F))
+            HorizontalDivider(color = if (isDark) Color(0xFF26364F) else Color(0xFFDCE4F0))
             if (status.isNotBlank()) {
                 Text(status, color = Color(0xFF91A0B7), fontSize = 12.sp, modifier = Modifier.padding(8.dp))
             }
@@ -131,12 +135,12 @@ internal fun ChatScreen(uid: String, friend: PersonRow, onBack: () -> Unit) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start) {
                         Column(
                             Modifier.widthIn(max = 290.dp)
-                                .background(if (mine) Color(0xFF245EB8) else Color(0xFF17263C), RoundedCornerShape(16.dp))
+                                .background(if (mine) Color(0xFF245EB8) else incomingBubble, RoundedCornerShape(16.dp))
                                 .padding(horizontal = 13.dp, vertical = 9.dp)
                         ) {
                             Text(msg.text, fontSize = 15.sp)
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text(msg.createdAt?.let { SimpleDateFormat("HH:mm", Locale("id", "ID")).format(it) } ?: "…", color = Color(0xFFCAD7EA), fontSize = 10.sp)
+                                Text(msg.createdAt?.let { SimpleDateFormat("HH:mm", Locale("id", "ID")).format(it) } ?: "…", color = mutedText, fontSize = 10.sp)
                                 if (mine) {
                                     val read = msg.readBy.contains(friend.uid)
                                     Text(if (read) "Dibaca" else "Terkirim", color = Color(0xFFCAD7EA), fontSize = 10.sp)
@@ -155,10 +159,10 @@ internal fun ChatScreen(uid: String, friend: PersonRow, onBack: () -> Unit) {
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                     maxLines = 4,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
+                        focusedTextColor = fg,
+                        unfocusedTextColor = fg,
                         focusedBorderColor = Color(0xFF3987FF),
-                        unfocusedBorderColor = Color(0xFF91A0B7),
+                        unfocusedBorderColor = mutedText,
                         cursorColor = Color(0xFF3987FF)
                     )
                 )

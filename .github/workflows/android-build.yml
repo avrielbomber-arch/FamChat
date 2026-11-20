@@ -9,6 +9,7 @@ on:
       - feature/friend-system
       - feature/private-chat
       - fix/chat-create-before-listener
+      - feature/modern-bbm-home
   workflow_dispatch:
 
 permissions:
