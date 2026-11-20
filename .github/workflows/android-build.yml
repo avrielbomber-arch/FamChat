@@ -11,6 +11,7 @@ on:
       - fix/chat-create-before-listener
       - feature/modern-bbm-home
       - feature/conversation-list
+      - feature/famchat-launcher-icon
   workflow_dispatch:
 
 permissions:
