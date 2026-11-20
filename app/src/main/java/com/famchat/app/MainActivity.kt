@@ -233,7 +233,7 @@ private fun HomeScreen(auth: FirebaseAuth, uid: String, isDark: Boolean, onTheme
             when (tab) {
                 0 -> {
                     Text("Cari teman dengan Public ID", fontWeight = FontWeight.SemiBold)
-                    OutlinedTextField(searchId, { searchId = it.filter(Char::isDigit).take(8); result = null }, Modifier.fillMaxWidth().padding(top = 10.dp), label = { Text("Masukkan 8 digit Public ID") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, colors = fieldColors())
+                    OutlinedTextField(searchId, { searchId = it.filter(Char::isDigit).take(8); result = null }, Modifier.fillMaxWidth().padding(top = 10.dp), label = { Text("Masukkan 8 digit Public ID") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, colors = fieldColors(isDark))
                     Button(onClick = {
                         if (searchId.length != 8) message = "Public ID harus terdiri dari 8 angka."
                         else {
