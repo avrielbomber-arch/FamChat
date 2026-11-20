@@ -1,5 +1,6 @@
 package com.famchat.app
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -34,6 +35,7 @@ private data class ChatMessage(
 
 @Composable
 internal fun ChatScreen(uid: String, friend: PersonRow, onBack: () -> Unit, isDark: Boolean = true) {
+    BackHandler(enabled = true) { onBack() }
     val bg = if (isDark) Color(0xFF0B1220) else Color(0xFFF3F6FC)
     val fg = if (isDark) Color.White else Color(0xFF17243A)
     val incomingBubble = if (isDark) Color(0xFF17263C) else Color.White
