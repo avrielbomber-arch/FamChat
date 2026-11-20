@@ -248,7 +248,7 @@ private fun HomeScreen(auth: FirebaseAuth, uid: String) {
                                                 val snap = tr.get(requestRef)
                                                 if (!snap.exists() || snap.getString("status") != "pending") throw IllegalStateException("Permintaan sudah tidak tersedia.")
                                                 tr.update(requestRef, "status", "accepted")
-                                                tr.set(db.collection("friendships").document(friendshipId), mapOf("members" to members, "createdAt" to FieldValue.serverTimestamp()))
+                                                tr.set(db.collection("friendships").document(friendshipId), mapOf("members" to members, "requestId" to request.id, "createdAt" to FieldValue.serverTimestamp()))
                                                 null
                                             }.addOnSuccessListener { message = "Permintaan diterima."; refreshLists() }
                                                 .addOnFailureListener { e -> message = e.localizedMessage ?: "Gagal menerima permintaan." }
