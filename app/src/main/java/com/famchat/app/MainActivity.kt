@@ -1,6 +1,7 @@
 package com.famchat.app
 
 import android.os.Bundle
+import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -17,6 +18,8 @@ import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,12 +43,20 @@ private val Muted = Color(0xFF91A0B7)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { MaterialTheme { FamChatApp() } }
+        setContent {
+            val context = LocalContext.current
+            val prefs = remember { context.getSharedPreferences("famchat_settings", Context.MODE_PRIVATE) }
+            var isDark by rememberSaveable { mutableStateOf(prefs.getBoolean("dark_theme", true)) }
+            MaterialTheme { FamChatApp(isDark, onThemeChange = {
+                isDark = it
+                prefs.edit().putBoolean("dark_theme", it).apply()
+            }) }
+        }
     }
 }
 
 @Composable
-private fun FamChatApp() {
+private fun FamChatApp(isDark: Boolean, onThemeChange: (Boolean) -> Unit) {
     val auth = remember { FirebaseAuth.getInstance() }
     var currentUser by remember { mutableStateOf(auth.currentUser) }
     DisposableEffect(auth) {
@@ -53,7 +64,7 @@ private fun FamChatApp() {
         auth.addAuthStateListener(listener)
         onDispose { auth.removeAuthStateListener(listener) }
     }
-    if (currentUser == null) AuthScreen(auth) else HomeScreen(auth, currentUser!!.uid)
+    if (currentUser == null) AuthScreen(auth) else HomeScreen(auth, currentUser!!.uid, isDark, onThemeChange)
 }
 
 @Composable
@@ -67,10 +78,10 @@ private fun AuthScreen(auth: FirebaseAuth) {
     Surface(Modifier.fillMaxSize(), color = Navy, contentColor = Color.White) {
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
             Text("FamChat", fontSize = 30.sp, fontWeight = FontWeight.Bold)
-            Text("Tetap dekat, di mana pun.", color = Muted)
+            Text("Tetap dekat, di mana pun.", color = muted)
             Text(if (isRegister) "Buat akun baru" else "Selamat datang kembali", Modifier.padding(top = 28.dp, bottom = 16.dp), fontSize = 20.sp)
             if (isRegister) {
-                OutlinedTextField(username, { username = it }, Modifier.fillMaxWidth(), label = { Text("Username") }, leadingIcon = { Icon(Icons.Default.Person, null) }, singleLine = true, colors = fieldColors())
+                OutlinedTextField(username, { username = it }, Modifier.fillMaxWidth(), label = { Text("Username") }, leadingIcon = { Icon(Icons.Default.Person, null) }, singleLine = true, colors = fieldColors(isDark))
                 Spacer(Modifier.height(10.dp))
             }
             OutlinedTextField(email, { email = it.trim() }, Modifier.fillMaxWidth(), label = { Text("Email") }, leadingIcon = { Icon(Icons.Default.Mail, null) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), singleLine = true, colors = fieldColors())
@@ -132,7 +143,7 @@ internal data class PersonRow(val uid: String, val username: String, val publicI
 private data class RequestRow(val id: String, val fromUid: String, val username: String, val publicId: String)
 
 @Composable
-private fun HomeScreen(auth: FirebaseAuth, uid: String) {
+private fun HomeScreen(auth: FirebaseAuth, uid: String, isDark: Boolean, onThemeChange: (Boolean) -> Unit) {
     val db = remember { FirebaseFirestore.getInstance() }
     var username by remember(uid) { mutableStateOf("Memuat profil...") }
     var publicId by remember(uid) { mutableStateOf("...") }
@@ -182,16 +193,40 @@ private fun HomeScreen(auth: FirebaseAuth, uid: String) {
         refreshLists()
     }
 
+    val bg = if (isDark) Navy else Color(0xFFF3F6FC)
+    val panel = if (isDark) Panel else Color.White
+    val fg = if (isDark) Color.White else Color(0xFF17243A)
+    val muted = if (isDark) Muted else Color(0xFF68758A)
+    val accent = Blue
+
     if (selectedChat != null) {
         val person = selectedChat!!
-        ChatScreen(uid = uid, friend = person, onBack = { selectedChat = null })
-    } else Surface(Modifier.fillMaxSize(), color = Navy, contentColor = Color.White) {
-        Column(Modifier.fillMaxSize().padding(20.dp)) {
-            Text("FamChat", fontSize = 28.sp, fontWeight = FontWeight.Bold)
-            Text("Halo, $username", color = Color(0xFF8DB8FF), modifier = Modifier.padding(top = 4.dp))
-            Text("ID FamChat: $publicId", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
-            Spacer(Modifier.height(20.dp))
-            TabRow(selectedTabIndex = tab, containerColor = Panel, contentColor = Blue) {
+        ChatScreen(uid = uid, friend = person, onBack = { selectedChat = null }, isDark = isDark)
+    } else Surface(Modifier.fillMaxSize(), color = bg, contentColor = fg) {
+        Column(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 14.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("FamChat", fontSize = 27.sp, fontWeight = FontWeight.ExtraBold, color = accent)
+                    Text("Tetap dekat, di mana pun.", color = muted, fontSize = 12.sp)
+                }
+                TextButton(onClick = { onThemeChange(!isDark) }) {
+                    Text(if (isDark) "☀ Terang" else "☾ Gelap", color = accent, fontWeight = FontWeight.SemiBold)
+                }
+                TextButton(onClick = { auth.signOut() }) { Text("Keluar", color = muted) }
+            }
+            Card(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 16.dp), colors = CardDefaults.cardColors(containerColor = panel), shape = RoundedCornerShape(20.dp)) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Surface(Modifier.size(48.dp), shape = CircleShape, color = accent) {
+                        Box(contentAlignment = Alignment.Center) { Text(username.take(1).uppercase(), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp) }
+                    }
+                    Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                        Text("Halo, $username", fontWeight = FontWeight.Bold, fontSize = 17.sp, color = fg)
+                        Text("PIN FamChat: $publicId", color = muted, fontSize = 12.sp)
+                    }
+                    Text("●", color = Color(0xFF22C55E), fontSize = 12.sp)
+                }
+            }
+            TabRow(selectedTabIndex = tab, containerColor = panel, contentColor = accent) {
                 listOf("Cari", "Permintaan", "Teman").forEachIndexed { index, label -> Tab(selected = tab == index, onClick = { tab = index; message = ""; refreshLists() }, text = { Text(label) }) }
             }
             Spacer(Modifier.height(16.dp))
@@ -215,7 +250,7 @@ private fun HomeScreen(auth: FirebaseAuth, uid: String) {
                         }
                     }, Modifier.fillMaxWidth().padding(top = 10.dp), enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Blue)) { Text(if (busy) "Mencari..." else "Cari pengguna") }
                     result?.let { person ->
-                        Card(Modifier.fillMaxWidth().padding(top = 14.dp), colors = CardDefaults.cardColors(containerColor = Panel)) {
+                        Card(Modifier.fillMaxWidth().padding(top = 14.dp), colors = CardDefaults.cardColors(containerColor = panel)) {
                             Column(Modifier.padding(16.dp)) {
                                 Text(person.username, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                                 Text("ID: ${person.publicId}", color = Muted)
@@ -288,19 +323,22 @@ private fun HomeScreen(auth: FirebaseAuth, uid: String) {
                     }
                 }
             }
-            if (message.isNotBlank()) Text(message, color = Color(0xFF9CC2FF), modifier = Modifier.padding(top = 12.dp), fontSize = 13.sp)
-            Spacer(Modifier.weight(1f))
-            OutlinedButton(onClick = { auth.signOut() }, Modifier.fillMaxWidth()) { Text("Keluar") }
+            if (message.isNotBlank()) Text(message, color = accent, modifier = Modifier.padding(top = 12.dp), fontSize = 13.sp)
+            Spacer(Modifier.height(8.dp))
         }
     }
 }
 
 @Composable
-private fun fieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor = Color.White, unfocusedTextColor = Color.White,
-    focusedBorderColor = Blue, unfocusedBorderColor = Muted,
-    focusedLabelColor = Color(0xFF8DB8FF), unfocusedLabelColor = Muted,
-    cursorColor = Blue, focusedLeadingIconColor = Blue, unfocusedLeadingIconColor = Muted
+private fun fieldColors(isDark: Boolean = true) = OutlinedTextFieldDefaults.colors(
+    focusedTextColor = if (isDark) Color.White else Color(0xFF17243A),
+    unfocusedTextColor = if (isDark) Color.White else Color(0xFF17243A),
+    focusedBorderColor = Blue,
+    unfocusedBorderColor = if (isDark) Muted else Color(0xFF9AA8BC),
+    focusedLabelColor = Color(0xFF8DB8FF),
+    unfocusedLabelColor = if (isDark) Muted else Color(0xFF68758A),
+    cursorColor = Blue, focusedLeadingIconColor = Blue,
+    unfocusedLeadingIconColor = if (isDark) Muted else Color(0xFF68758A)
 )
 
 private fun generatePublicId(): String = (10000000 + Random.nextInt(90000000)).toString()
