@@ -167,6 +167,7 @@ private fun AuthScreen(auth: FirebaseAuth) {
                                     if (task.isSuccessful) {
                                         val user = auth.currentUser
                                         if (user != null) {
+                                            val db = FirebaseFirestore.getInstance()
                                             val publicId = generatePublicId()
                                             val profile = hashMapOf(
                                                 "uid" to user.uid,
@@ -175,14 +176,27 @@ private fun AuthScreen(auth: FirebaseAuth) {
                                                 "publicId" to publicId,
                                                 "createdAt" to System.currentTimeMillis()
                                             )
-                                            FirebaseFirestore.getInstance().collection("users")
-                                                .document(user.uid).set(profile)
-                                                .addOnCompleteListener { saveTask ->
-                                                    loading = false
-                                                    if (!saveTask.isSuccessful) {
-                                                        message = "Akun dibuat, tetapi profil gagal disimpan. Periksa Firestore."
-                                                    }
+                                            val userRef = db.collection("users").document(user.uid)
+                                            val usernameRef = db.collection("usernames").document(cleanName)
+                                            val idRef = db.collection("publicIds").document(publicId)
+                                            db.runTransaction { transaction ->
+                                                if (transaction.get(usernameRef).exists()) {
+                                                    throw IllegalStateException("Username sudah digunakan. Pilih username lain.")
                                                 }
+                                                if (transaction.get(idRef).exists()) {
+                                                    throw IllegalStateException("Terjadi benturan ID. Silakan daftar kembali.")
+                                                }
+                                                transaction.set(usernameRef, mapOf("uid" to user.uid))
+                                                transaction.set(idRef, mapOf("uid" to user.uid))
+                                                transaction.set(userRef, profile)
+                                                null
+                                            }.addOnCompleteListener { saveTask ->
+                                                loading = false
+                                                if (!saveTask.isSuccessful) {
+                                                    message = saveTask.exception?.localizedMessage
+                                                        ?: "Profil gagal disimpan. Pastikan Firestore sudah dibuat."
+                                                }
+                                            }
                                         } else {
                                             loading = false
                                             message = "Akun dibuat. Silakan login kembali."
