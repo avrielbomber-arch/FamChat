@@ -218,13 +218,14 @@ private fun HomeScreen(auth: FirebaseAuth, uid: String) {
                                     busy = true; message = ""
                                     val requestId = "${uid}_${person.uid}"
                                     val ref = db.collection("friendRequests").document(requestId)
-                                    ref.get().addOnSuccessListener { old ->
-                                        if (old.exists()) message = "Permintaan pertemanan sudah pernah dibuat."
-                                        else ref.set(mapOf("fromUid" to uid, "toUid" to person.uid, "fromUsername" to username, "fromPublicId" to publicId, "status" to "pending", "createdAt" to FieldValue.serverTimestamp()))
-                                            .addOnSuccessListener { message = "Permintaan pertemanan terkirim." }
-                                            .addOnFailureListener { e -> message = e.localizedMessage ?: "Gagal mengirim permintaan." }
-                                            .addOnCompleteListener { busy = false }
-                                    }.addOnFailureListener { e -> message = e.localizedMessage ?: "Gagal memeriksa permintaan."; busy = false }
+                                    ref.set(mapOf("fromUid" to uid, "toUid" to person.uid, "fromUsername" to username, "fromPublicId" to publicId, "status" to "pending", "createdAt" to FieldValue.serverTimestamp()))
+                                        .addOnSuccessListener { message = "Permintaan pertemanan terkirim." }
+                                        .addOnFailureListener { e ->
+                                            message = if (e.message?.contains("PERMISSION_DENIED", ignoreCase = true) == true) {
+                                                "Permintaan sudah pernah dibuat atau tidak diizinkan."
+                                            } else e.localizedMessage ?: "Gagal mengirim permintaan."
+                                        }
+                                        .addOnCompleteListener { busy = false }
                                 }, enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Blue)) { Text("Tambah teman") }
                             }
                         }
